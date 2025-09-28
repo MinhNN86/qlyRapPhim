@@ -57,13 +57,6 @@ export default function UserView({ movies, tickets, setTickets }) {
     setVisible(false);
   }
 
-  function handleCancelTicket(ticketId) {
-    setTickets(
-      tickets.map((t) => (t.id === ticketId ? { ...t, canceled: true } : t))
-    );
-    message.info("Đã huỷ vé!");
-  }
-
   return (
     <>
       <h2>Danh sách phim</h2>
