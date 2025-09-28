@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 export default function UserView({ movies, tickets, setTickets }) {
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [userName, setUserName] = useState("");
+  const [ticketCount, setTicketCount] = useState(1);
   const [visible, setVisible] = useState(false);
 
   // Lấy danh sách vé theo phim
@@ -14,6 +15,7 @@ export default function UserView({ movies, tickets, setTickets }) {
 
   function handleBook(movie) {
     setSelectedMovie(movie);
+    setTicketCount(1);
     setVisible(true);
   }
   function handleOk() {
@@ -21,10 +23,15 @@ export default function UserView({ movies, tickets, setTickets }) {
       message.error("Nhập tên người đặt vé");
       return;
     }
-    // Kiểm tra số ghế đã đặt
-    const movieTickets = getMovieTickets(selectedMovie.id);
-    if (movieTickets.length >= selectedMovie.seats) {
-      message.error("Phim đã hết chỗ!");
+    if (!ticketCount || ticketCount < 1) {
+      message.error("Số lượng vé phải lớn hơn 0");
+      return;
+    }
+    const movieTickets = getMovieTickets(selectedMovie.id).filter(
+      (t) => !t.canceled
+    );
+    if (movieTickets.length + ticketCount > selectedMovie.seats) {
+      message.error("Không đủ chỗ trống!");
       return;
     }
     // Kiểm tra user đã đặt chưa
@@ -32,19 +39,18 @@ export default function UserView({ movies, tickets, setTickets }) {
       message.error("Bạn đã đặt vé phim này!");
       return;
     }
-    setTickets([
-      ...tickets,
-      {
-        id: uuidv4(),
-        movieId: selectedMovie.id,
-        userName,
-        time: Date.now(),
-        canceled: false,
-      },
-    ]);
+    const newTickets = Array.from({ length: ticketCount }, () => ({
+      id: uuidv4(),
+      movieId: selectedMovie.id,
+      userName,
+      time: Date.now(),
+      canceled: false,
+    }));
+    setTickets([...tickets, ...newTickets]);
     setUserName("");
+    setTicketCount(1);
     setVisible(false);
-    message.success("Đặt vé thành công!");
+    message.success(`Đặt ${ticketCount} vé thành công!`);
   }
   function handleCancel() {
     setUserName("");
@@ -109,29 +115,12 @@ export default function UserView({ movies, tickets, setTickets }) {
                   {movieTickets.filter((t) => !t.canceled).length} vé
                 </div>
                 <div>{movie.description}</div>
-                <div>
-                  <b>Người đã đặt:</b>{" "}
-                  {movieTickets
-                    .filter((t) => !t.canceled)
-                    .map((t) => (
-                      <span key={t.id}>
-                        {t.userName}
-                        <Button
-                          size="small"
-                          danger
-                          style={{ marginLeft: 8 }}
-                          onClick={() => handleCancelTicket(t.id)}
-                        >
-                          Huỷ vé
-                        </Button>{" "}
-                      </span>
-                    ))}
-                </div>
               </Card>
             </List.Item>
           );
         }}
       />
+
       <Modal
         title={`Đặt vé: ${selectedMovie?.title}`}
         open={visible}
@@ -143,7 +132,25 @@ export default function UserView({ movies, tickets, setTickets }) {
           placeholder="Nhập tên người đặt"
           value={userName}
           onChange={(e) => setUserName(e.target.value)}
+          style={{ marginBottom: 12 }}
         />
+        <div style={{ marginBottom: 8 }}>
+          <b>Số lượng vé:</b>
+          <Input
+            type="number"
+            min={1}
+            max={
+              selectedMovie
+                ? selectedMovie.seats -
+                  getMovieTickets(selectedMovie.id).filter((t) => !t.canceled)
+                    .length
+                : 1
+            }
+            value={ticketCount}
+            onChange={(e) => setTicketCount(Number(e.target.value))}
+            style={{ width: 80, marginLeft: 8 }}
+          />
+        </div>
       </Modal>
     </>
   );
